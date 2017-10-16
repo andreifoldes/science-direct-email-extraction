@@ -34,7 +34,7 @@ con = dbConnect(pg, user="###", password="###",
 ###code
 
 ## import extraction method
-source("C:\\Users\\User\\Documents\\Projects\\correspondingAuthor\\extractMetadata.R")
+source("extractMetadata.R")
 
 
 journalIndex <- 1
