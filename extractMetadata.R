@@ -41,7 +41,7 @@ extractMetadata <- function(link, con, ar_id){
   authors <- data.frame(do.call('rbind', strsplit(as.character(authors$names),',',fixed=TRUE)))
   authors <- cbind(authors,index=rownames(authors))
   
-  
+
   
   doi       <-  if(!is.null(core$doi)) core$doi else NA
   scopusId  <-  if(!is.null(xml_data$`scopus-id`)) xml_data$`scopus-id` else NA
@@ -59,7 +59,12 @@ extractMetadata <- function(link, con, ar_id){
   tmp<-core[which(names(xml_data$coredata)=="subject")]
   
   if(length(tmp)!=0){
-    keywords <- data.frame(keywords = do.call("rbind", tmp))
+    if(length(tmp)==1)
+    {
+      keywords<-data.frame(keywords = matrix(unlist(strsplit(tmp$subject, ",")), byrow=TRUE))
+    }else{
+      keywords <- data.frame(keywords = do.call("rbind", tmp))
+    }
     keywords <- cbind(keywords,index=rownames(keywords))
   }else{
     keywords        <-  NULL
@@ -68,9 +73,7 @@ extractMetadata <- function(link, con, ar_id){
   sourceid <- scopusId
   sourceidtype <- "scopusID"
   projectid<- 21
-  
-  articleDF <- data.frame(doi, sourceid, sourceidtype, title, publicationname, type, volume, issueidentifier, pagerange
-                          ,number, coverdate, publisher, pubtype, projectid)
+
   
   authorsDF <- data.frame(doi, sourceid, sourceidtype, givenname=authors$X2, surname = authors$X1, index=authors$index)
   
@@ -87,10 +90,10 @@ extractMetadata <- function(link, con, ar_id){
   output<-paste("C:\\Users\\User\\Documents\\Projects\\correspondingAuthor\\tmp\\",gsub("/","_",doi),".pdf",sep="")
   
   tryCatch({
-    
-    download.file(link,output, mode="wb")
-    pagenum<-pdf_info(output)$pages
-    fulltextStatcheck <- checkPDF(output)
+
+  download.file(link,output, mode="wb")
+  pagenum<-pdf_info(output)$pages
+  fulltextStatcheck <- checkPDF(output)
   }, error = function(e){
     dbWriteTable(con,'failedDownloads',data.frame(doi, link), row.names=FALSE,append=TRUE)
     fulltextStatcheck <- NULL
@@ -100,7 +103,7 @@ extractMetadata <- function(link, con, ar_id){
   
   if(!is.null(fulltextStatcheck))
   {
-    fulltextStatcheckDF<- data.frame(doi, fulltextStatcheck, fromfulltext=1, pagenum)
+    fulltextStatcheckDF<- data.frame(doi=doi, fulltextStatcheck, fromfulltext=1, pagenum)
     names(fulltextStatcheckDF) <- gsub("\\.","",tolower(names(fulltextStatcheckDF)))
     fulltextStatcheckDF$source<-NULL
     
@@ -112,8 +115,8 @@ extractMetadata <- function(link, con, ar_id){
   
   if(!length(abstractStatcheck)==0)
   {
-    abstractStatcheckDF<- data.frame(doi, abstractStatcheck, fromfulltext=0)
-    names(abstractStatcheckDF) <- gsub("\\.","",tolower(names(abstractStatcheck)))
+    abstractStatcheckDF<- data.frame(doi=doi, abstractStatcheck, fromfulltext=0)
+    names(abstractStatcheckDF) <- gsub("\\.","",tolower(names(abstractStatcheckDF)))
     abstractStatcheckDF$source<-NULL
     
   }else{
@@ -139,6 +142,10 @@ extractMetadata <- function(link, con, ar_id){
   }else{
     emailDF<-data.frame(doi,email=cEmail,givenname=cName$X2, surname = cName$X1)
   }
+  
+  
+  articleDF <- data.frame(doi, sourceid, sourceidtype, title, publicationname, type, volume, issueidentifier, pagerange
+                          ,number, coverdate, publisher, pubtype, projectid, pagenum)
   
   return(list(articleDF, authorsDF, keywordsDF, fulltextStatcheckDF, abstractStatcheckDF, emailDF))
   
