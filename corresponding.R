@@ -9,6 +9,9 @@ if(length(new.packages)) install.packages(new.packages)
 #load
 lapply(list.of.packages, require, character.only = TRUE)
 
+journalIndex <- 0
+dateVal  <- ""
+projectid<- 0
 
 id<-''
 api_key = get_api_key(id, error = FALSE)
@@ -31,7 +34,7 @@ pg = dbDriver("PostgreSQL")
 con = dbConnect(pg, user="", password="",
                 host="localhost", port=, dbname="")
 
-# check for the tables
+# check random table 
 dbExistsTable(con, "failedxml")
 
 ###code
@@ -40,10 +43,6 @@ dbExistsTable(con, "failedxml")
 source("C:\\Users\\User\\Documents\\Projects\\correspondingAuthor\\extractMetadata.R")
 source("C:\\Users\\User\\Documents\\Projects\\correspondingAuthor\\resultValidator.R")
 
-
-journalIndex <- 1
-dateVal  <- "February 2010"
-projectid<- 21
 
 #helperfuncion
 getResultSet <- function(journalIndex, dateVal, resultOffset=1)
@@ -61,8 +60,6 @@ getResultSet <- function(journalIndex, dateVal, resultOffset=1)
     count = 100
   )
 }
-
-journalIndex=1
 
 extractMeta = function(journalIndex, dateVal){
   
