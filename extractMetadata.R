@@ -72,7 +72,7 @@ extractMetadata <- function(link, con, ar_id){
   
   sourceid <- scopusId
   sourceidtype <- "scopusID"
-  projectid<- 21
+
 
   
   authorsDF <- data.frame(doi, sourceid, sourceidtype, givenname=authors$X2, surname = authors$X1, index=authors$index)
