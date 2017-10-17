@@ -138,7 +138,7 @@ extractMeta = function(journalIndex, dateVal){
               link<-paste("http://api.elsevier.com/content/article/scopus_id/",substr(idSet[l],11,30),"?apiKey=",id,"&httpAccept=text%2Fxml", sep = "")
               
               resultList <-tryCatch({extractMetadata(link, con, idSet[l])}
-                                    ,error = function(err) { message(e)})
+                                    ,error = function(err) { message(err)})
               
               if(!is.null(resultList)){
                 result <- tryCatch({
