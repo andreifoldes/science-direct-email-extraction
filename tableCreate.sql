@@ -15,6 +15,7 @@ CREATE TABLE ARTICLES(
    publisher        TEXT,
    pubType          TEXT,
    projectID        INT,
+   openaccess       TEXT,
    pagenum          INT,
    createdon        timestamp default current_timestamp
 );
@@ -52,8 +53,6 @@ CREATE TABLE EMAILS(
    givenName        TEXT,
    surName          TEXT
 
-   CONSTRAINT proper_email CHECK (email ~* '^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$')
-
 );
 
 DROP TABLE IF EXISTS STATCHECK;
@@ -78,15 +77,17 @@ apafactor           numeric,
 fromfulltext          BOOLEAN,
 pagenum             INT
 );
-
-CREATE TABLE failedDownload(
+DROP TABLE IF EXISTS faileddownload;
+CREATE TABLE faileddownload(
     url TEXT
 );
 
-CREATE TABLE failedXML(
+DROP TABLE IF EXISTS failedxml;
+CREATE TABLE failedxml(
     id TEXT
 );
 
+DROP TABLE IF EXISTS duplicates;
 CREATE TABLE duplicates(
    doi              TEXT  ,
    sourceID         TEXT     NOT NULL,
@@ -101,6 +102,19 @@ CREATE TABLE duplicates(
    coverDate        DATE,
    publisher        TEXT,
    pubType          TEXT,
+
    projectID        INT,
+    openaccess       TEXT,
+
+   pagenum          INT,
    createdon        timestamp default current_timestamp
 );
+
+DROP TABLE IF EXISTS repeatquery;
+CREATE TABLE repeatquery(
+    i INT,
+    j INT,
+    projectid INT,
+    createdon        timestamp default current_timestamp
+);
+
