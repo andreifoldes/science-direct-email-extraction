@@ -10,7 +10,7 @@ if(length(new.packages)) install.packages(new.packages)
 lapply(list.of.packages, require, character.only = TRUE)
 
 
-id<-'d710a9ee6a1f68f3eca5b6f8d3533b0e'
+id<-''
 api_key = get_api_key(id, error = FALSE)
 options(elsevier_api_key_filename = id)
 options(elsevier_api_key = id)
