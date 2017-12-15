@@ -3,7 +3,7 @@
 #rm(list = ls(all = TRUE))
 
 #install if not installed
-list.of.packages <- c("rscopus", "statcheck", "dplyr", "XML", "RPostgreSQL", "pdftools", "stringr")
+list.of.packages <- c("rscopus", "statcheck", "dplyr", "XML", "RPostgreSQL", "pdftools", "stringr", "pryr")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 #load
@@ -28,35 +28,44 @@ pg = dbDriver("PostgreSQL")
 
 # Local Postgres.app database; no password by default
 # Of course, you fill in your own database information here.
-con = dbConnect(pg, user="postgres", password="andreilikesoctopuses",
-                host="localhost", port=5432, dbname="miningdb")
+con = dbConnect(pg, user="postgres", password="",
+                host="localhost", port=5432, dbname="miningDB")
 
 ###code
 
 ## import extraction method
 source("extractMetadata.R")
-
-months <- c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
+#months <- c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
+years <- c("2010","2011","2012","2013","2014","2015","2016")
+#dates <- expand.grid(months, years)
+#dates <- paste(dates$Var1,dates$Var2)
+dates<- years
 
 journalIndex <- 1
-dates  <- c("January 2010", "February 2010", "March 2010")
 
-#helperfuncion
+#memory handling
+maxMemory <- mem_used()+(6*1e8)
+#helperfuncionr
 getResultSet <- function(journalIndex, dateIndex, resultOffset=0)
 {
-  res = generic_elsevier_api(
+  res <- generic_elsevier_api(
     query = paste(
-      "DOCTYPE ( ar )  AND",
+      
       "SRCTITLE (",scopusJournalList20171005$V1[journalIndex],")",
-      "AND  PUBDATETXT(", dates[dateIndex],")"
+      "AND  PUBYR(", dates[dateIndex],")"
     ),
     type = "search",
-    search_type = "scopus",
+    search_type = "scidir",
     api_key = api_key,
     start = resultOffset,
-    count = 10
+    count = 25
   )
+  print(paste(journalIndex,dateIndex))
+  
+  return(res)
 }
+
+#res$content$`search-results`$entry[[1]]$`prism:doi`
 
 extractMeta<-function(i,j=1){
   
@@ -91,9 +100,9 @@ extractMeta<-function(i,j=1){
       totalResCount <-
         as.numeric(res$content$`search-results`$`opensearch:totalResults`)
       
-      ### MAIN - examine all abstracts in resultsSet in 10 length batches
+      ### MAIN - examine all abstracts in resultsSet in 25 length batches
       
-      for (k in seq(0, as.numeric(totalResCount), by = 10))
+      for (k in seq(0, as.numeric(totalResCount), by = 25))
       {
         if (k == 0)
         {
@@ -102,6 +111,19 @@ extractMeta<-function(i,j=1){
           res <- getResultSet(i, j, k)
         }
         
+        mem <- system('systeminfo', intern=TRUE)
+        available<-str_extract_all(mem[26],"\\(?[0-9˙]+\\)?")
+        available<-strtoi(gsub("˙","",available))
+        total<-str_extract_all(mem[25],"\\(?[0-9˙]+\\)?")
+        total<-strtoi(gsub("˙","",total))
+        mem<-available/total*100
+        
+        ###MEMORY POLICE
+        if(mem>85){
+          stop("Memory limit reached")
+        }else{
+          dbWriteTable(con,'memoryuse',data.frame("memoryused"=as.numeric(mem_used()/1048576), projectid), row.names=FALSE, append=TRUE)
+        }
         
         idSet <- NULL
         
@@ -117,19 +139,18 @@ extractMeta<-function(i,j=1){
         {
           entryCount <- length(res$content$`search-results`$entry)
           
-          metadataBatch <- NULL
-          
           #Total number of results examined in a given batch
           for (l in 1:entryCount){
             
             #scopusId
             message("batchIndex:","date ",j," ", i, " ", k, " ", l)
-            if (is.null(res$content$`search-results`$entry[[l]]$`dc:identifier`))
+            if (is.null(res$content$`search-results`$entry[[l]]$`prism:doi`))
             {
               idSet[l] <- NA
             } else{
-              idSet[l] <- res$content$`search-results`$entry[[l]]$`dc:identifier`
+              idSet[l] <- res$content$`search-results`$entry[[l]]$`prism:doi`
             }
+            
             
             ##################################
             #Return Abstract of given article
@@ -141,7 +162,7 @@ extractMeta<-function(i,j=1){
             }
             else{
               
-              link<-paste("http://api.elsevier.com/content/article/scopus_id/",substr(idSet[l],11,30),"?apiKey=",id,"&httpAccept=text%2Fxml", sep = "")
+              link<-paste("http://api.elsevier.com/content/article/doi/",idSet[l],"?apiKey=",id,"&httpAccept=text%2Fxml", sep = "")
               
               resultList<-NULL
               
@@ -205,15 +226,32 @@ extractMeta<-function(i,j=1){
       
       i<- i+1
       do.call(file.remove, list(list.files("pdfs", full.names = TRUE)))
+      cat("\014")
+      .rs.restartR()
       
       
     }
     j<-j+1
     i<-1
+    cat("\014")  
+    .rs.restartR()
     print("nextdate")
   } 
 }
 
-extractMeta(i)
+
+
+#extractMeta(i)
+
+lastInsert<- dbGetQuery(con, "SELECT to_number(s.row, '99'), to_number(y.row, '99')
+           FROM articles a
+           LEFT JOIN scidirjournal s
+           ON a.publicationname = s.publicationname
+           LEFT JOIN years y
+           ON to_char(EXTRACT(YEAR FROM coverdate), '9999') LIKE '%'|| y.years || '%'
+           ORDER BY createdon DESC
+           LIMIT 1")
+
+extractMeta(lastInsert[[1]],lastInsert[[2]])
 
 
